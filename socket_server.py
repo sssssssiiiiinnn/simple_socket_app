@@ -34,23 +34,40 @@ class SocketServer(object):
             thread.start()
 
     def close_connection(self, conn, addr):
+        logger.debug({
+            'action': 'close_connection',
+            'conn': conn,
+            'addr': addr,
+        })
         conn.close()
         self.clients.remove((conn, addr))
+        logger.debug({
+            'action': 'close_connection',
+            'clients': self.clients
+        })
+
 
     def handler(self, conn, addr):
-        with conn:
-            while True:
-                data = conn.recv(1024)
-                if not data:
-                    self.close_connection(conn, addr)
-                    break
-                else:
-                    print('data : {}'.format(data))
-                    for client in self.clients:
-                        try:
-                            client[0].sendto(data, client[1])
-                        except ConnectionResetError:
-                            break
+        try:
+            with conn:
+                while True:
+                    data = conn.recv(1024)
+                    if not data:
+                        self.close_connection(conn, addr)
+                        break
+                    else:
+                        logger.debug({
+                            'action': 'handler',
+                            'data': data.decode('utf-8')
+                        })
+                        for client in self.clients:
+                            client[0].sendall(data)
+        except ConnectionResetError as ex:
+            logger.debug({
+                'action': 'handler',
+                'error': ex
+            })
+            self.close_connection(conn, addr)
 
 
 if __name__ == '__main__':
